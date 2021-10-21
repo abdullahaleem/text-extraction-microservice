@@ -17,6 +17,11 @@ REST API:  app to app communication.
 FASTAPI makes every endpoint by default return json (unless you change it) so we dont have to do json.dumps
 
 Flush out testing before going to production to make sure we dont have any bugs at production
+
+In digital ocean we will make the run command: gunicorn --worker-tmp-dir /dev/shm -k uvicorn.workers.UvicornWorker app.main:app
+
+Downside to deploy like this (without docker and stuff) is lack of control the actual os environments. So what we are gonna do now is
+deploy docker file to handle this.
 """
 
 import os

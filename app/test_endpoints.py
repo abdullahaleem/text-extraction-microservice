@@ -14,6 +14,7 @@ We can also add pytest to that file too se it would check all test before commit
 
 The reason we do this: 1. code is well tested 2. make sure its tested when we try to push it 3. make sure its ready when going to production
 It can also be done one github (you dont necessiarily have to run these on your local machine) using github actions
+Its safe to have autodeploy once we have added the testing part in pre-commit.
 
 """
 client = TestClient(app) # We can treat the client like python requests
