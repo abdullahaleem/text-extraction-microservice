@@ -12,6 +12,9 @@ Now once we add everything to git and run commit, it will will run all of these 
 It is really nice as it ensures atleast these things are being handled before we commit
 We can also add pytest to that file too se it would check all test before commiting (we need to install and run all-files once we make changes)
 
+The reason we do this: 1. code is well tested 2. make sure its tested when we try to push it 3. make sure its ready when going to production
+It can also be done one github (you dont necessiarily have to run these on your local machine) using github actions
+
 """
 client = TestClient(app) # We can treat the client like python requests
 
