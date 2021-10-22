@@ -1,6 +1,6 @@
 #!/bin/bash
 
-RUN_PORT = ${PORT:-8000}
+RUN_PORT=${PORT:-8000}
 # The platform will set the port and incase it doesn't the backup port will be 8000
 
 # Having the entry here the benefit is we can test it locally
