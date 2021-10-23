@@ -67,8 +67,3 @@ def home_view(request: Request, settings:Settings = Depends(get_settings)):
 @app.post("/") # http POST -> JSON
 def home_detail_view():
     return {"hello": "world"}
-
-
-@app.post("/image-echo/")
-def image_echo_view(file):
-    return file
