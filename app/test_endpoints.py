@@ -1,5 +1,10 @@
-from app.main import app
+import os
+import io
+import shutil
+import time
+from app.main import app, BASE_DIR, UPLOAD_DIR
 from fastapi.testclient import TestClient
+from PIL import Image, ImageChops
 
 """
 We will include the files to pytest.ini that we dont want to test on
@@ -31,5 +36,37 @@ def test_post_home():
     response = client.post("/")
     assert response.status_code == 200
     assert "application/json" in response.headers["content-type"]
-    #assert response.json() == {"hello": "world"}
 
+
+def test_echo_upload():
+    images_path = os.path.join(BASE_DIR, "images")
+
+    for image_name in os.listdir(images_path):
+        image_path = os.path.join(images_path, image_name)
+        
+        # # to remove certrain extensions while testing
+        # if image_path.endswith(".txt"):
+        #     pass
+
+        try:
+            image = Image.open(image_path)
+        except:
+            image = None
+            
+        response = client.post("/image-echo/", files={"file": open(image_path, "rb")})
+
+        if image is not None:
+            assert response.status_code == 200
+            # returning a valid image
+            response_stream = io.BytesIO(response.content)
+            echo_image = Image.open(response_stream)
+
+            # compare images from stream to image opened in test
+            difference = ImageChops.difference(echo_image, image).getbbox()
+            assert difference == None
+            
+        else:
+            assert response.status_code == 400
+
+        # time.sleep(3) # just so we can see what is being tested before we remove it
+        shutil.rmtree(UPLOAD_DIR)

@@ -28,9 +28,13 @@ Now we have two different environments. One in product (digitalocean) and one in
 """
 
 import os
-from fastapi import FastAPI, Request, Depends
+import io
+import pathlib
+import uuid
+from PIL import Image
+from fastapi import FastAPI, Request, Depends, File, UploadFile, HTTPException
 from fastapi import templating
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, FileResponse
 from fastapi.templating import Jinja2Templates
 
 from pydantic import BaseSettings
@@ -38,6 +42,7 @@ from functools import lru_cache
 
 class Settings(BaseSettings):
     debug: bool
+    echo_active: bool = False
     class Config:
         env_file = ".env"
 
@@ -48,10 +53,10 @@ def get_settings():
 
 settings = get_settings()
 DEBUG = settings.debug
-# print(DEBUG)
 
 
 BASE_DIR = "app"
+UPLOAD_DIR = os.path.join(BASE_DIR, "uploads")
 
 app = FastAPI()
 templates = Jinja2Templates(directory=os.path.join(BASE_DIR, "templates"))
@@ -67,3 +72,32 @@ def home_view(request: Request, settings:Settings = Depends(get_settings)):
 @app.post("/") # http POST -> JSON
 def home_detail_view():
     return {"hello": "world"}
+
+# when ever we are uploading files we need to use async view thats why we use uvicorn too
+@app.post("/image-echo/", response_class=FileResponse)
+async def image_echo_view(file:UploadFile = File(...), settings:Settings = Depends(get_settings)):
+    
+    # when we go to production we will have lack of response
+    if not settings.echo_active:
+        raise HTTPException(detail="Invalid endpoint", status_code=400)
+
+    # creates the upload directory for images if it doesnt already exists
+    if not os.path.exists(UPLOAD_DIR):
+        os.makedirs(UPLOAD_DIR)
+
+    bytes = await file.read()
+    bytes_str = io.BytesIO(bytes)
+
+    # can also use opencv instead of PIL here
+    try:
+        image = Image.open(bytes_str)
+    except:
+        raise HTTPException(detail="Invalid image", status_code=400)
+
+    # uuid helps us handle the case where we upload image with same name again
+    fext = file.filename.split(".")[-1]
+    fdest = os.path.join(UPLOAD_DIR, f"{uuid.uuid1()}.{fext}")
+
+    image.save(fdest)
+
+    return fdest

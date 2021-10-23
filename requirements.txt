@@ -6,3 +6,8 @@ pytest
 requests
 pre-commit
 python-dotenv
+
+# uploading related
+aiofiles
+python-multipart
+pillow
