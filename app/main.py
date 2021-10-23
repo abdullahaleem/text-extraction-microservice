@@ -22,26 +22,53 @@ In digital ocean we will make the run command: gunicorn --worker-tmp-dir /dev/sh
 
 Downside to deploy like this (without docker and stuff) is lack of control the actual os environments. So what we are gonna do now is
 deploy docker file to handle this.
+
+Now we have two different environments. One in product (digitalocean) and one in development local. Now we will add debug which tells us which environment we are in
+
 """
 
 import os
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Depends
 from fastapi import templating
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
-BASE_DIR = "app"
+from pydantic import BaseSettings
+from functools import lru_cache
 
+class Settings(BaseSettings):
+    debug: bool
+    class Config:
+        env_file = ".env"
+
+@lru_cache
+def get_settings():
+    return Settings()
+
+
+settings = get_settings()
+DEBUG = settings.debug
+# print(DEBUG)
+
+
+BASE_DIR = "app"
 
 app = FastAPI()
 templates = Jinja2Templates(directory=os.path.join(BASE_DIR, "templates"))
 
 @app.get("/", response_class=HTMLResponse) # http GET -> JSON
-def home_view(request: Request):
+def home_view(request: Request, settings:Settings = Depends(get_settings)):
     #print(request)
+
+    print(settings.debug)
     return templates.TemplateResponse("home.html", {"request": request, "test_arg": 123})
 
 
 @app.post("/") # http POST -> JSON
 def home_detail_view():
     return {"hello": "world"}
+
+
+@app.post("/image-echo/")
+def image_echo_view(file):
+    return file
