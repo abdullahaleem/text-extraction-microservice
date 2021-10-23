@@ -1,5 +1,7 @@
 bin/
 include/
+Scripts/
+vevn-extract-text/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
