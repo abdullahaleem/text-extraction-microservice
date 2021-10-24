@@ -2,9 +2,13 @@ import os
 import io
 import shutil
 import time
+
+from requests.api import request
 from app.main import app, BASE_DIR, UPLOAD_DIR, get_settings
 from fastapi.testclient import TestClient
 from PIL import Image, ImageChops
+
+import requests
 
 """
 We will include the files to pytest.ini that we dont want to test on
@@ -21,79 +25,22 @@ The reason we do this: 1. code is well tested 2. make sure its tested when we tr
 It can also be done one github (you dont necessiarily have to run these on your local machine) using github actions
 Its safe to have autodeploy once we have added the testing part in pre-commit.
 
+If we dont call this function test_something its not gonna test it
 """
-client = TestClient(app) # We can treat the client like python requests
+
+END_POINT = "https://extract-text-ms-qs6ya.ondigitalocean.app/"
 
 
-# if we dont call this function test_something its not gonna test it
 def test_get_home():
-    response = client.get("/") # equivalent to requests.get("")
+    response = requests.get(END_POINT) # equivalent to client.get("/") from local
     assert response.status_code == 200
     assert "text/html" in response.headers["content-type"]
 
 
 def test_invalid_file_upload():
-    response = client.post("/")
+    response = requests.post(END_POINT)
     assert response.status_code == 422
     assert "application/json" in response.headers["content-type"]
-
-
-def test_echo_upload():
-    images_path = os.path.join(BASE_DIR, "images")
-
-    for image_name in os.listdir(images_path):
-        image_path = os.path.join(images_path, image_name)
-
-        try:
-            image = Image.open(image_path)
-        except:
-            image = None
-            
-        response = client.post("/image-echo/", files={"file": open(image_path, "rb")})
-
-        if image is not None:
-            assert response.status_code == 200
-            # returning a valid image
-            response_stream = io.BytesIO(response.content)
-            echo_image = Image.open(response_stream)
-
-            # compare images from stream to image opened in test
-            difference = ImageChops.difference(echo_image, image).getbbox()
-            assert difference == None
-            
-        else:
-            assert response.status_code == 400
-
-        # time.sleep(3) # just so we can see what is being tested before we remove it
-        shutil.rmtree(UPLOAD_DIR)
-
-
-
-def test_prediction_upload():
-    settings = get_settings()
-    images_path = os.path.join(BASE_DIR, "images")
-
-    for image_name in os.listdir(images_path):
-        image_path = os.path.join(images_path, image_name)
-        response = client.post("/", files={"file": open(image_path, "rb")}, headers={"Authorization": f"JWT {settings.app_auth_token}"})
-        
-        try:
-            image = Image.open(image_path)
-        except:
-            image = None
-
-        # Commented out cause tesseract-ocr not installed locally        
-        # if image is not None:
-        #     assert response.status_code == 200
-        #     response_stream = io.BytesIO(response.content)
-        #     data = response_stream.json()
-        #     assert len(data.keys()) == 2
-        # else:
-        #     assert response.status_code == 400
-
-        # if os.path.exists(UPLOAD_DIR):
-        #     # time.sleep(3) # just so we can see what is being tested before we remove it
-        #     shutil.rmtree(UPLOAD_DIR)
 
 
 def test_prediction_upload_without_auth():
@@ -101,5 +48,32 @@ def test_prediction_upload_without_auth():
 
     for image_name in os.listdir(images_path):
         image_path = os.path.join(images_path, image_name)
-        response = client.post("/", files={"file": open(image_path, "rb")})
+        response = requests.post(END_POINT, files={"file": open(image_path, "rb")})
         assert  response.status_code == 401
+    
+
+def test_prediction_upload():
+    settings = get_settings()
+    images_path = os.path.join(BASE_DIR, "images")
+
+    for image_name in os.listdir(images_path):
+        image_path = os.path.join(images_path, image_name)
+        try:
+            image = Image.open(image_path)
+        except:
+            image = None
+
+        response = requests.post(END_POINT, files={"file": open(image_path, "rb")}, headers={"Authorization": f"JWT {settings.app_auth_token_prod}"})
+        
+        if image is not None:
+            assert response.status_code == 200
+            #response_stream = io.BytesIO(response.content)
+            data = response.json()
+            assert len(data.keys()) == 2
+        else:
+            assert response.status_code == 400
+            
+        # Clearing space on server. Added time so we can see what is being dont while in development.
+        if os.path.exists(UPLOAD_DIR):
+            # time.sleep(3)
+            shutil.rmtree(UPLOAD_DIR)
