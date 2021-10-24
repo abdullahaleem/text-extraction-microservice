@@ -1,5 +1,12 @@
 {% extends "base.html" %}
 
 {% block content %}
-<h1>Code on...{{test_arg}}</h1>
+<h1>Microservice that extracts text from images</h1>
+<p>Usage: This microservice can be used with python requests package.</p>
+<p>To use the microservice you would need the end_point, image_path and secret_key. The microservice returns all the text in the images split into lines. Please see example below for usage.</p>
+<code>
+    END_POINT = "https://extract-text-ms-qs6ya.ondigitalocean.app/"
+    <br>
+    response = requests.post(END_POINT, files={"file": open(image_path, "rb")}, headers={"Authorization": f"JWT {settings.SECRET_KEY}"})
+</code>
 {% endblock %}

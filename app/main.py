@@ -94,11 +94,6 @@ def verify_auth(authorization = Header(None), settings:Settings = Depends(get_se
 def prediction_view(request: Request, settings:Settings = Depends(get_settings)):
     return templates.TemplateResponse("home.html", {"request": request, "test_arg": 123})
 
-# @app.post("/") # http POST -> JSON
-# def home_detail_view():
-#     return {"hello": "world"}
-
-
 @app.post("/")
 async def prediction_view(file:UploadFile = File(...), authorization = Header(None), settings:Settings = Depends(get_settings)):
     verify_auth(authorization, settings)
