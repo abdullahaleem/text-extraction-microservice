@@ -32,7 +32,7 @@ import io
 import pathlib
 import uuid
 from PIL import Image
-from fastapi import FastAPI, Request, Depends, File, UploadFile, HTTPException
+from fastapi import FastAPI, Request, Depends, File, UploadFile, HTTPException, Header
 from fastapi import templating
 from fastapi.responses import HTMLResponse, FileResponse
 from fastapi.templating import Jinja2Templates
@@ -40,9 +40,15 @@ from fastapi.templating import Jinja2Templates
 from pydantic import BaseSettings
 from functools import lru_cache
 
+import pytesseract
+
 class Settings(BaseSettings):
-    debug: bool
+    debug: bool = False
     echo_active: bool = False
+    app_auth_token: str = None
+    app_auth_token_prod: str = None
+    skip_auth: bool = False
+
     class Config:
         env_file = ".env"
 
@@ -61,22 +67,57 @@ UPLOAD_DIR = os.path.join(BASE_DIR, "uploads")
 app = FastAPI()
 templates = Jinja2Templates(directory=os.path.join(BASE_DIR, "templates"))
 
-@app.get("/", response_class=HTMLResponse) # http GET -> JSON
-def home_view(request: Request, settings:Settings = Depends(get_settings)):
-    #print(request)
 
-    print(settings.debug)
+def verify_auth(authorization = Header(None), settings:Settings = Depends(get_settings)):
+    """
+    Helper function to check if the request sent has proper authentication.
+    This function can the be called inside any endpoint to confirm that user is authenticated.
+    {"authorization": str(Bearer <token>)}
+    """
+    # If in debug mode or skip authtication specified then skip
+    if settings.debug and settings.skip_auth:
+        return
+
+    # If no authorzation provided 
+    if authorization == None:
+        raise HTTPException(detail="Not authorized provided", status_code=401)
+    else:
+        # Extract token
+        label, token = authorization.split()
+        # If token provided is incorrect
+        if token != settings.app_auth_token:
+            raise HTTPException(detail="Incorrect authorized provided", status_code=401)
+    
+
+
+@app.get("/", response_class=HTMLResponse) # http GET -> JSON
+def prediction_view(request: Request, settings:Settings = Depends(get_settings)):
     return templates.TemplateResponse("home.html", {"request": request, "test_arg": 123})
 
+# @app.post("/") # http POST -> JSON
+# def home_detail_view():
+#     return {"hello": "world"}
 
-@app.post("/") # http POST -> JSON
-def home_detail_view():
-    return {"hello": "world"}
 
-# when ever we are uploading files we need to use async view thats why we use uvicorn too
+@app.post("/")
+async def prediction_view(file:UploadFile = File(...), authorization = Header(None), settings:Settings = Depends(get_settings)):
+    verify_auth(authorization, settings)
+    bytes = await file.read()
+    bytes_str = io.BytesIO(bytes)
+    try:
+        image = Image.open(bytes_str)
+        lines_predicted = pytesseract.image_to_string(image)
+        predictions = [line for line in lines_predicted.split("\n")]
+        return {"results": predictions, "original": lines_predicted}
+    except:
+        raise HTTPException(detail="Invalid image", status_code=400)
+
+
 @app.post("/image-echo/", response_class=FileResponse)
 async def image_echo_view(file:UploadFile = File(...), settings:Settings = Depends(get_settings)):
-    
+    """
+    When ever we are uploading files we need to use async view thats why we use uvicorn too
+    """
     # when we go to production we will have lack of response
     if not settings.echo_active:
         raise HTTPException(detail="Invalid endpoint", status_code=400)

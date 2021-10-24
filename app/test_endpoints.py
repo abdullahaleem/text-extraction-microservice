@@ -2,7 +2,7 @@ import os
 import io
 import shutil
 import time
-from app.main import app, BASE_DIR, UPLOAD_DIR
+from app.main import app, BASE_DIR, UPLOAD_DIR, get_settings
 from fastapi.testclient import TestClient
 from PIL import Image, ImageChops
 
@@ -32,9 +32,9 @@ def test_get_home():
     assert "text/html" in response.headers["content-type"]
 
 
-def test_post_home():
+def test_invalid_file_upload():
     response = client.post("/")
-    assert response.status_code == 200
+    assert response.status_code == 422
     assert "application/json" in response.headers["content-type"]
 
 
@@ -70,3 +70,36 @@ def test_echo_upload():
 
         # time.sleep(3) # just so we can see what is being tested before we remove it
         shutil.rmtree(UPLOAD_DIR)
+
+
+
+def test_prediction_upload():
+    settings = get_settings()
+    images_path = os.path.join(BASE_DIR, "images")
+
+    for image_name in os.listdir(images_path):
+        image_path = os.path.join(images_path, image_name)
+        response = client.post("/", files={"file": open(image_path, "rb")}, headers={"Authorization": f"JWT {settings.app_auth_token}"})
+        
+        try:
+            image = Image.open(image_path)
+            assert response.status_code == 200
+            response_stream = io.BytesIO(response.content)
+            data = response_stream.json()
+            assert len(data.keys) == 2
+        except:
+            assert response.status_code == 400
+
+        if os.path.exists(UPLOAD_DIR):
+            # time.sleep(3) # just so we can see what is being tested before we remove it
+            shutil.rmtree(UPLOAD_DIR)
+
+
+
+def test_prediction_upload_without_auth():
+    images_path = os.path.join(BASE_DIR, "images")
+
+    for image_name in os.listdir(images_path):
+        image_path = os.path.join(images_path, image_name)
+        response = client.post("/", files={"file": open(image_path, "rb")})
+        assert  response.status_code == 401
