@@ -1,4 +1,4 @@
-# extract-text
+# Text Extraction Microservice
 
 A very light weight microservice that extracts text from images built using Tesseract (by google) and FastAPI. To use the microservice you would need the end_point, image_path and secret_key. The microservice returns all the text in the images split into lines. Please see example below for usage.
 
