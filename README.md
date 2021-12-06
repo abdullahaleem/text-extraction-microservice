@@ -7,8 +7,10 @@ To use the microservice you would need the end_point, image_path and secret_key.
 
 ``` python
 import requests
+
 END_POINT = "https://extract-text-ms-qs6ya.ondigitalocean.app/"
 SECRET_KEY = <SECRET_KEY>
+
 response = requests.post(END_POINT, 
                          files={"file": open(image_path, "rb")}, 
                          headers={"Authorization": f"JWT {SECRET_KEY}"})
